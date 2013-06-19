@@ -1,8 +1,10 @@
-# MIMOSA extension in Rcpp
+MIMOSA extension in Rcpp
 
 - Place rds files in the data folder
+
 - make
+  source("master.R")
 
-    source("master.R")
+- Change T in master.R to vary the length of MCMC loop
 
-- Change T in master.R to vary the length of MCMC loop.
+

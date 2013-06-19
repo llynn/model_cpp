@@ -48,7 +48,7 @@ for (k in 1:K1) {
     indi[ay[l2],k]=0;
 }
 indi[,K] = rowSums(indi[,1:K1])
-
+indi = matrix(as.integer(indi),nrow = I)
 ########################
 Dims=c(I,K,M); DimsG = c(I,K,T);
 #####################find empirical ground mean and variance ##########
