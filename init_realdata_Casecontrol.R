@@ -3,8 +3,6 @@
 library(e1071); 
 #library(utils);
 library(rBeta2009);
-#I = size(yu);
-#M = size(yu[[1]])[2];
 
 ##### delete outlier #49
 if (FALSE) { # for ENV-1 only
@@ -32,25 +30,29 @@ I=I-1;
 sub_s = sub_s[-32]
 N_s = N_s[-32]
 N_u = N_u[-32]
-
+}
+######delete outlier #16 for cast-control####
+if(FALSE) {
+y_s[[16]]=NULL
+y_u[[16]]=NULL
+n_s = n_s[-16,]
+n_u = n_u[-16,]
+sub_u = sub_u[-16]
+placebo = placebo[-16]
+I=I-1;
+sub_s = sub_s[-16]
+N_s = N_s[-16]
+N_u = N_u[-16]
 }
 ######fix some gamma's #####
 indi = array(1,dim=c(I,K)) # 0 indicate that gamma_ik=0
-
 for (k in 1:K1) {
-    ay =1:I
-    l1 = which(n_s[,k]==0);
-    #l2 = which(n_u[,k]==0);
-    #ll = intersect(l1,l2);
-    indi[l1,k]=0;
-    l2 = which(log(n_s[-l1,k]/N_s[-l1])-log(n_u[-l1,k]/N_u[-l1])<0)
-    ay=ay[-l1]
-    indi[ay[l2],k]=0;
+   l2 = which((n_s[,k]/N_s)-(n_u[,k]/N_u)<=0)
+   indi[l2,k]=0;
 }
 indi[,K] = rowSums(indi[,1:K1])
-indi = matrix(as.integer(indi),nrow = I)
-########################
-Dims=c(I,K,M); DimsG = c(I,K,T);
+indi = matrix(as.integer(indi), nrow=I)
+
 #####################find empirical ground mean and variance ##########
 m_s = array(0, dim = c(M,1)); #hyper prior mean for mu_s
 m_u = array(0, dim = c(M,1)); 
@@ -68,8 +70,6 @@ for ( mm in 1:M) {
     m_u[mm] = mean(yu_mm);
     grand_m[mm] = mean(c(ys_mm,yu_mm))
     grand_sd[mm] =mad(c(ys_mm,yu_mm))
-    #Sigma_s[mm] = sd(ys_mm);
-    #Sigma_u[mm] = sd(yu_mm);
 }
 m_s = m_u + 500;
 mu_s = array(0, dim=c(T,M)); mu_s[1,] = m_s;
@@ -80,9 +80,9 @@ Sigma_u = grand_sd;
 
 
 #############################################################
-mk = as.integer(array(0, dim = c(1,K-1)));
-Istar = as.integer(0);
-mKstar = as.integer(0);
+mk = array(0, dim = c(1,K-1));
+Istar = 0;
+mKstar = 0;
 
 a =1; # prior for gamma
 b =1;
@@ -103,8 +103,8 @@ pvar_s[K] = 0.6;
 varp_u = array(sqrt(8),dim=c(K,1)); #for propose alpha_u
 
 pp = array(0.65, dim=c(I,1));
-pb1 = 0.1;
-pb2 = 0.35;
+pb1 = 0.25;
+pb2 = 0.75;
 
 lambda_s=array(100000, dim=c(1,K)); lambda_s[K] =150000; #upper bound for alpha_s
 lambda_u=lambda_s;
@@ -126,8 +126,6 @@ pvar_muu = array(0.6, dim=c(M,1));
 sqrt_muu1 = array(sqrt(300),dim=c(M,1));
 sqrt_muu2 = array(sqrt(500),dim=c(M,1));
 
-#lambda_alpha = array(5, dim = c(M,1)) # upper limit for alpha
-#lambda_beta = array(2500, dim = c(M,1))
 ### estimate sigma^2_ik and lambda######
 sig2ik = array(0, dim = c(I,K,M)); #hyper prior mean for mu_s
 meanuik= sig2ik
@@ -207,10 +205,8 @@ sig_beta1 = mad(beta1)*3
 
 lambda = mean(temp_var/(mean_sig)^2)
  
-#alpha = array(5, dim = c(T,1))
-#beta = array(5, dim = c(T,1))
-alpha = rep(5,T);
-beta = rep(5,T);
+alpha = array(5, dim = c(T,1))
+beta = array(5, dim = c(T,1))
 alpha1=mean(alpha1);
 beta1 = mean(beta1);
 alpha[1] = alpha1;

@@ -1,6 +1,6 @@
-res <-readRDS("res.rds") # only CD4+
-meta <-readRDS("meta.rds")
-cd4_counts <- readRDS("cd4_counts.rds")
+res <-readRDS("Case-Control/res.rds") # only CD4+
+meta <-readRDS("Case-Control/meta.rds")
+cd4_counts <- readRDS("Case-Control/cd4_counts.rds")
 #names(rv144)
 #rv144$pheno.name 
 #exprs(rv144$continuous.data[[1]])
@@ -8,41 +8,46 @@ cd4_counts <- readRDS("cd4_counts.rds")
 #rv144.continuous<-lapply(rv144$continuous.data,function(x)x[,c(14,7,12,9,5,15)]) 
 #rv144.continuous<-lapply(rv144.continuous,exprs)
 
+#### delete bad ptids
+del = c(523845,525881,600929,616848,631338,631772,644891,646477,704809,719186,849938,104173,125948,132409,134551,210617,211497,217402,223868,233547,323142,330034,330272,339553)
+
+#### case-control
+orig <- read.csv("Case-Control/PTID_map_case_control.csv", header=T, sep=",")
+rPTID =  unique(orig[,2:3])
+
+#rPTID = data.frame(rPTID)
+colnames(rPTID) = c("PTID", "PTID_orig")
+
+st = NULL; st_d= NULL;
+for (ii in 1:length(del)) {
+  st <- c(st, which(del[ii]==rPTID[,2]))
+  st_d <- c(st_d, which(meta$PTID == rPTID[st[ii],1]))
+}
+
+res <- res[-st_d]
+meta <- meta[-st_d,]
+cd4_counts <- cd4_counts[-st_d]
+
 #########################################################
 #########################################################
 sub_negctrl_800 = which(meta$Stim =="negctrl 1" & meta$VISITNO == 800) # unstim & VISITNO
-sub_negctrl_100 = which(meta$Stim =="negctrl 1" & meta$VISITNO == 100) # unstim & VISITNO
 
-sub_stim_800= which(meta$Stim=="92TH023-ENV" & meta$VISITNO == 800) # stim & VISITNO
-sub_stim_100 = which(meta$Stim=="92TH023-ENV" & meta$VISITNO == 100) # stim & VISITNO
+sub_stim_800= which(meta$Stim=="92TH023 Env" & meta$VISITNO == 800) # stim & VISITNO
 
 subsub_800 = intersect(meta$PTID[sub_negctrl_800],meta$PTID[sub_stim_800])
-subsub_100 = intersect(meta$PTID[sub_negctrl_100],meta$PTID[sub_stim_100])
 
 sub_s=NULL; sub_u=NULL;
 for ( i in 1:length(subsub_800)) {
-   sub_s =c(sub_s,which(meta$PTID[sub_stim_800]==as.numeric(subsub_800[i])))
-   sub_u = c(sub_u, which(meta$PTID[sub_negctrl_800]==as.numeric(subsub_800[i])))
+   sub_s =c(sub_s,which(meta$PTID[sub_stim_800]==(subsub_800[i])))
+   sub_u = c(sub_u, which(meta$PTID[sub_negctrl_800]==(subsub_800[i])))
 }
 
 sub_s = sub_stim_800[sub_s]; #index for the stim and unstim sample
 sub_u = sub_negctrl_800[sub_u];
 
-subs = NULL; subu= NULL;
-for ( i in 1:length(subsub_100)) {
-   subs =c(subs,which(meta$PTID[sub_stim_100]==as.numeric(subsub_100[i])))
-   subu = c(subu, which(meta$PTID[sub_negctrl_100]==as.numeric(subsub_100[i])))
-}
-
-subs = sub_stim_100[subs]; #index for the stim and unstim sample
-subu = sub_negctrl_100[subu];
-
-sub_s = c(sub_s,subs);
-sub_u = c(sub_u,subu);
-
 #cd4
-N_s = (cd4_counts[sub_s])
-N_u =  (cd4_counts[sub_u])
+N_s = as.integer(cd4_counts[sub_s])
+N_u = as.integer(cd4_counts[sub_u])
 
 ys= vector(mode="list", length=length(sub_s));
 yu =vector(mode="list", length=length(sub_u));
@@ -52,6 +57,7 @@ for (i in 1:length(sub_s)) {
 
 }
 placebo = meta$vaccine[sub_s]
+rm(sub_negctrl_800,subsub_800,sub_stim_800)
 ###############################################################
 library(caTools)
 #library(R.basic)
@@ -60,23 +66,25 @@ M = dim(yu[[1]])[2]
 K = 2^M;
 K1=K-1;
 y_u=yu; y_s = ys;
-n_s = array(0,dim=c(I,K));
-n_u = array(0,dim=c(I,K));
+n_s = array(as.integer(0),dim=c(I,K));
+n_u = array(as.integer(0),dim=c(I,K));
 
 
-d = array(0,dim=c(K,M))
+d = array(as.integer(0),dim=c(K,M))
 count=1;
-for (kk in 1:M) {
-    set = combs(1:M,kk);
-    ll = dim(combs(1:M,kk)); 
-    
-    for ( lll in 1:ll[1]) {
-      d[(count-1+lll),set[lll,]] = 1;
-    }
-      #count = count+nChooseK(M,kk);
-     count = count+choose(M,kk);
+for (kk in 1:(M-1)) {
+  set = combs(1:M,kk);
+  ll = dim(combs(1:M,kk)); 
+  
+  for ( lll in 1:ll[1]) {
+    d[(count-1+lll),set[lll,]] = as.integer(1);
+  }
+  
+  #count = count+nChooseK(M,kk);
+  count = count+choose(M,kk);
 }
-d = cbind(d,rowSums(d)); # last column the number of 1's
+d[count,]=as.integer(1)
+d = cbind(d,as.integer(rowSums(d))); # last column the number of 1's
 
 for (i in 1:I) {
     count_s = 1; count_u = 1;
@@ -85,7 +93,7 @@ for (i in 1:I) {
     for ( kk in 1:K1) {   
        if( length(yui)>0) {
        sel = apply(yui,1,function(xrow)(identical(as.numeric(xrow),as.numeric(d[kk,1:M])))) 
-       n_u[i,kk] = sum(sel)
+       n_u[i,kk] = as.integer(sum(sel))
        if(n_u[i,kk]>0) {
           y_u[[i]][count_u:(count_u+n_u[i,kk]-1),] = yu[[i]][sel,]
           count_u = count_u+n_u[i,kk]
@@ -94,17 +102,18 @@ for (i in 1:I) {
        if(length(ysi)>0) {
        sel = apply(ysi,1,function(xrow)(identical(as.numeric(xrow),as.numeric(d[kk,1:M])))) 
    
-       n_s[i,kk] = sum(sel)
+       n_s[i,kk] = as.integer(sum(sel))
        if(n_s[i,kk]>0) {
           y_s[[i]][count_s:(count_s+n_s[i,kk]-1),] = ys[[i]][sel,]
           count_s = count_s+n_s[i,kk]
         }
        }
     }
-    n_s[i,K] = N_s[i]-sum(n_s[i,1:K1])
-    n_u[i,K] = N_u[i]-sum(n_u[i,1:K1])
+    n_s[i,K] = as.integer(N_s[i]-sum(n_s[i,1:K1]))
+    n_u[i,K] = as.integer(N_u[i]-sum(n_u[i,1:K1]))
 }
 
+rm(ys,yu,count_s,count_u,count)
 #######take off zero columns #############
 nu0 = which(colSums(n_u)==0)
 ns0 = which(colSums(n_s)==0)
@@ -116,9 +125,10 @@ n_u = n_u[,-n0]
 
 K = K-length(n0)
 
+rm(nu0,ns0,n0)
 #### additional delete #####
 #del = c(7,17,21,22,23,24,26,29,34,35,37,38,39,40,42,43,46,47);
-del = which(colSums(n_s)<=11);
+del = which(colSums(n_s)<=12);
 
 for ( i in 1:I) {
    cs = cumsum(n_s[i,]); cu = cumsum(n_u[i,]); posis = NULL; posiu = NULL;
@@ -144,7 +154,10 @@ n_u = n_u[,-del]
 K = dim(n_s)[2]
 
 K1=K-1;
+n_s[,K] = N_s-as.integer(rowSums(n_s[,1:K1]))
+n_u[,K] = N_u-as.integer(rowSums(n_u[,1:K1]))
 
-n_s=matrix(as.integer(n_s),nrow=I)
-n_u=matrix(as.integer(n_u),nrow=I)
-d=matrix(as.integer(d),nrow=K)
+
+#n_s=matrix(as.integer(n_s),nrow=I)
+#n_u=matrix(as.integer(n_u),nrow=I)
+#d=matrix(as.integer(d),nrow=K)
